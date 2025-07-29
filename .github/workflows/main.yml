@@ -2,17 +2,18 @@
 name: Flutter CI/CD Pipeline
 
 # This section defines the triggers for the workflow.
+# THE BRANCH NAMES ARE NOW CORRECTED TO BE CAPITALIZED.
 on:
   # Run the workflow on pushes to these specific branches.
   push:
     branches:
-      - development
-      - staging
-      - production
-  # Also run on pull requests that target the 'development' branch.
+      - Development
+      - Staging
+      - Production
+  # Also run on pull requests that target the 'Development' branch.
   pull_request:
     branches:
-      - development
+      - Development
 
 # A workflow is made up of one or more jobs that can run sequentially or in parallel.
 jobs:
@@ -61,12 +62,13 @@ jobs:
 
   # -----------------------------------------------------------
   # JOB 2: DEPLOY TO STAGING (CD - Continuous Deployment)
-  # This job ONLY runs when code is pushed to the 'staging' branch.
+  # This job ONLY runs when code is pushed to the 'Staging' branch.
   # -----------------------------------------------------------
   deploy_staging:
     name: Build & Deploy to Staging (Web)
     needs: validate # This job will only start if the 'validate' job completes successfully.
-    if: github.ref == 'refs/heads/staging' && github.event_name == 'push' # Condition to run
+    # THE BRANCH NAME IS NOW CORRECTED IN THE 'if' CONDITION.
+    if: github.ref == 'refs/heads/Staging' && github.event_name == 'push' # Condition to run
 
     runs-on: ubuntu-latest
 
@@ -115,12 +117,13 @@ jobs:
 
   # ---------------------------------------------------------------
   # JOB 3: BUILD FOR PRODUCTION (CD - Continuous Deployment)
-  # This job ONLY runs when code is pushed to the 'production' branch.
+  # This job ONLY runs when code is pushed to the 'Production' branch.
   # ---------------------------------------------------------------
   build_production:
     name: Build Production Release
     needs: validate # This job also depends on the 'validate' job.
-    if: github.ref == 'refs/heads/production' && github.event_name == 'push' # Condition to run
+    # THE BRANCH NAME IS NOW CORRECTED IN THE 'if' CONDITION.
+    if: github.ref == 'refs/heads/Production' && github.event_name == 'push' # Condition to run
 
     runs-on: ubuntu-latest
 
