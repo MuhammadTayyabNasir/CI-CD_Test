@@ -123,6 +123,6 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           artifacts: "build/app/outputs/bundle/release/app-release.aab"
-          token: ${{ secrets.SUPER_SECRET_BUILD_ID }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag: "v${{ github.run_number }}"
           generateReleaseNotes: true
