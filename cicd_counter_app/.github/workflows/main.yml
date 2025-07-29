@@ -148,7 +148,7 @@ jobs:
           # This will upload the built app bundle to the release.
           artifacts: "build/app/outputs/bundle/release/app-release.aab"
           # The GITHUB_TOKEN is automatically provided by GitHub Actions.
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.SUPER_SECRET_BUILD_ID  }}
           # Create a tag for the release, e.g., "v1", "v2", ...
           tag: "v${{ github.run_number }}"
           # Automatically generate release notes from commit messages.
