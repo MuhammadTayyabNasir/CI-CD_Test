@@ -1,0 +1,155 @@
+# A friendly name for our workflow, which will be displayed in the Actions tab on GitHub.
+name: Flutter CI/CD Pipeline
+
+# This section defines the triggers for the workflow.
+on:
+  # Run the workflow on pushes to these specific branches.
+  push:
+    branches:
+      - development
+      - staging
+      - production
+  # Also run on pull requests that target the 'development' branch.
+  pull_request:
+    branches:
+      - development
+
+# A workflow is made up of one or more jobs that can run sequentially or in parallel.
+jobs:
+  # ----------------------------------------------------
+  # JOB 1: VALIDATE THE CODE (CI - Continuous Integration)
+  # This job runs on every trigger to ensure code quality.
+  # ----------------------------------------------------
+  validate:
+    name: Validate & Test Code
+    runs-on: ubuntu-latest # Use the latest stable Ubuntu runner.
+
+    steps:
+      # Step 1: Get the code from the repository.
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Java (required for Flutter Android builds).
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # Step 3: Set up the specific version of Flutter we need. Caching speeds up future runs.
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable' # Or 'beta', 'dev', 'master'
+          cache: true
+
+      # Step 4: Get all the project dependencies.
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Step 5: Run the linter to check for code style issues.
+      - name: Run static analysis
+        run: flutter analyze
+
+      # Step 6: Run all unit and widget tests. If any test fails, the workflow fails.
+      - name: Run tests
+        run: flutter test
+
+  # -----------------------------------------------------------
+  # JOB 2: DEPLOY TO STAGING (CD - Continuous Deployment)
+  # This job ONLY runs when code is pushed to the 'staging' branch.
+  # -----------------------------------------------------------
+  deploy_staging:
+    name: Build & Deploy to Staging (Web)
+    needs: validate # This job will only start if the 'validate' job completes successfully.
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push' # Condition to run
+
+    runs-on: ubuntu-latest
+
+    # Special permissions are needed for the job to deploy to GitHub Pages.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Flutter for Web
+        run: flutter build web --release
+
+      - name: Upload web build artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      # This is the "deploy message" step you requested!
+      - name: Post deployment link as comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: '🎉 Staging deployment successful! View here: ${{ steps.deployment.outputs.page_url }}'
+            });
+
+  # ---------------------------------------------------------------
+  # JOB 3: BUILD FOR PRODUCTION (CD - Continuous Deployment)
+  # This job ONLY runs when code is pushed to the 'production' branch.
+  # ---------------------------------------------------------------
+  build_production:
+    name: Build Production Release
+    needs: validate # This job also depends on the 'validate' job.
+    if: github.ref == 'refs/heads/production' && github.event_name == 'push' # Condition to run
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Android App Bundle for release
+        run: flutter build appbundle --release
+
+      - name: Create a GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          # This will upload the built app bundle to the release.
+          artifacts: "build/app/outputs/bundle/release/app-release.aab"
+          # The GITHUB_TOKEN is automatically provided by GitHub Actions.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Create a tag for the release, e.g., "v1", "v2", ...
+          tag: "v${{ github.run_number }}"
+          # Automatically generate release notes from commit messages.
+          generateReleaseNotes: true
