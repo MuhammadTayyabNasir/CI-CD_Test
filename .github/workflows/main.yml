@@ -55,6 +55,10 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      # Step 7: Use a secret stored in GitHub settings.
+      - name: Show The Secret Build ID
+        run: echo "The build ID is ${{ secrets.SUPER_SECRET_BUILD_ID }}"
+
   # -----------------------------------------------------------
   # JOB 2: DEPLOY TO STAGING (CD - Continuous Deployment)
   # This job ONLY runs when code is pushed to the 'staging' branch.
@@ -71,7 +75,7 @@ jobs:
       contents: read
       pages: write
       id-token: write
-
+      
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
@@ -96,7 +100,7 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
+        
       # This is the "deploy message" step you requested!
       - name: Post deployment link as comment
         uses: actions/github-script@v7
@@ -148,7 +152,7 @@ jobs:
           # This will upload the built app bundle to the release.
           artifacts: "build/app/outputs/bundle/release/app-release.aab"
           # The GITHUB_TOKEN is automatically provided by GitHub Actions.
-          token: ${{ secrets.SUPER_SECRET_BUILD_ID  }}
+          token: ${{ secrets.SUPER_SECRET_BUILD_ID }}
           # Create a tag for the release, e.g., "v1", "v2", ...
           tag: "v${{ github.run_number }}"
           # Automatically generate release notes from commit messages.
