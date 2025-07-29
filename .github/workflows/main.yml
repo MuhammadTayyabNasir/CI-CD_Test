@@ -2,7 +2,6 @@
 name: Flutter CI/CD Pipeline
 
 # This section defines the triggers for the workflow.
-# THE BRANCH NAMES ARE NOW CORRECTED TO BE CAPITALIZED.
 on:
   # Run the workflow on pushes to these specific branches.
   push:
@@ -19,60 +18,42 @@ on:
 jobs:
   # ----------------------------------------------------
   # JOB 1: VALIDATE THE CODE (CI - Continuous Integration)
-  # This job runs on every trigger to ensure code quality.
   # ----------------------------------------------------
   validate:
     name: Validate & Test Code
-    runs-on: ubuntu-latest # Use the latest stable Ubuntu runner.
+    runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Get the code from the repository.
       - name: Checkout repository code
         uses: actions/checkout@v4
-
-      # Step 2: Set up Java (required for Flutter Android builds).
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
-      # Step 3: Set up the specific version of Flutter we need. Caching speeds up future runs.
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable' # Or 'beta', 'dev', 'master'
+          channel: 'stable'
           cache: true
-
-      # Step 4: Get all the project dependencies.
       - name: Install dependencies
         run: flutter pub get
-
-      # Step 5: Run the linter to check for code style issues.
       - name: Run static analysis
         run: flutter analyze
-
-      # Step 6: Run all unit and widget tests. If any test fails, the workflow fails.
       - name: Run tests
         run: flutter test
-
-      # Step 7: Use a secret stored in GitHub settings.
       - name: Show The Secret Build ID
         run: echo "The build ID is ${{ secrets.SUPER_SECRET_BUILD_ID }}"
 
   # -----------------------------------------------------------
   # JOB 2: DEPLOY TO STAGING (CD - Continuous Deployment)
-  # This job ONLY runs when code is pushed to the 'Staging' branch.
   # -----------------------------------------------------------
   deploy_staging:
     name: Build & Deploy to Staging (Web)
-    needs: validate # This job will only start if the 'validate' job completes successfully.
-    # THE BRANCH NAME IS NOW CORRECTED IN THE 'if' CONDITION.
-    if: github.ref == 'refs/heads/Staging' && github.event_name == 'push' # Condition to run
+    needs: validate
+    if: github.ref == 'refs/heads/Staging' && github.event_name == 'push'
 
     runs-on: ubuntu-latest
-
-    # Special permissions are needed for the job to deploy to GitHub Pages.
     permissions:
       contents: read
       pages: write
@@ -81,29 +62,22 @@ jobs:
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
-
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
-
       - name: Install dependencies
         run: flutter pub get
-
       - name: Build Flutter for Web
         run: flutter build web --release
-
       - name: Upload web build artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-        
-      # This is the "deploy message" step you requested!
       - name: Post deployment link as comment
         uses: actions/github-script@v7
         with:
@@ -117,46 +91,38 @@ jobs:
 
   # ---------------------------------------------------------------
   # JOB 3: BUILD FOR PRODUCTION (CD - Continuous Deployment)
-  # This job ONLY runs when code is pushed to the 'Production' branch.
   # ---------------------------------------------------------------
   build_production:
     name: Build Production Release
-    needs: validate # This job also depends on the 'validate' job.
-    # THE BRANCH NAME IS NOW CORRECTED IN THE 'if' CONDITION.
-    if: github.ref == 'refs/heads/Production' && github.event_name == 'push' # Condition to run
-
+    needs: validate
+    if: github.ref == 'refs/heads/Production' && github.event_name == 'push'
     runs-on: ubuntu-latest
+
+    # THIS PERMISSIONS BLOCK IS THE FIX FOR THE 401 ERROR
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
       - name: Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
           cache: true
-
       - name: Install dependencies
         run: flutter pub get
-
       - name: Build Android App Bundle for release
         run: flutter build appbundle --release
-
       - name: Create a GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          # This will upload the built app bundle to the release.
           artifacts: "build/app/outputs/bundle/release/app-release.aab"
-          # The GITHUB_TOKEN is automatically provided by GitHub Actions.
           token: ${{ secrets.SUPER_SECRET_BUILD_ID }}
-          # Create a tag for the release, e.g., "v1", "v2", ...
           tag: "v${{ github.run_number }}"
-          # Automatically generate release notes from commit messages.
           generateReleaseNotes: true
